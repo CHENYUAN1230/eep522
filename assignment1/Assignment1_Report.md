@@ -195,11 +195,12 @@ Since both revisions share the same memory configuration, treating them equivale
 
 After recompilation, the experiment completed successfully and produced valid data and plots.
 
+![alt text](images/image.png)
 ---
 
 ## 7. Results
 
-The experiment generated multiple plots illustrating:
+The experiment took around 5 minutes to generate multiple plots illustrating:
 
 - Execution time trends
 - Cache-friendly vs cache-unfriendly memory access patterns
@@ -461,3 +462,5 @@ eep522/
    └── hellow.c
 
 ```
+
+
