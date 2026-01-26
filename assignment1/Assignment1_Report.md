@@ -1,6 +1,7 @@
 # EEP 522 – Assignment 1: System Configuration
 
 **Author:** Yu-An Chen  
+**Contact:** yuan1230@uw.edu  
 **Course:** EEP 522 – Embedded And Real Time Systems  
 **Platform:** Raspberry Pi 4 Model B (1GB)  
 **Date:** January 25, 2026  
@@ -16,6 +17,7 @@ Unlike a traditional setup, most initialization steps were completed during the 
 The system was successfully configured using SSH-based access, Visual Studio Code Remote SSH for development, and GitHub for version control.  
 
 An experimental workload was executed and visualized using gnuplot. During execution, a hardware revision mismatch was identified and corrected in the source code to support the target board.
+
 ---
 
 ## 1. Introduction
@@ -24,6 +26,7 @@ Embedded systems development requires a stable, reproducible, and well-documente
 The purpose of this assignment is to configure a Raspberry Pi as a headless embedded Linux platform suitable for development, experimentation, and performance evaluation.
 
 This configuration serves as the foundation for subsequent assignments. Emphasis was placed on minimizing manual setup, leveraging modern tooling, and documenting all challenges encountered during system bring-up.
+
 ---
 
 ## 2. Hardware and Software Setup
@@ -131,7 +134,8 @@ The provided experiment archive (`A1_source.zip`) was transferred to the Raspber
 ```
 eep522/
 └── assignment1/
-└── experiment/
+   └── experiment/
+      └── A1_source.zip
 ```
 
 Commands used:
@@ -155,6 +159,7 @@ The experiment was executed using:
 
 `./run.sh`
 
+> The script was located inside the `ee_course` directory, which was created after extracting `A1_source.zip` into the `assignment1/experiment` directory.
 
 However, the generated plots were empty.  
 Inspection of the program output revealed the following error:
@@ -212,7 +217,7 @@ The results confirm that the system was operating correctly and that the workloa
 
 Several challenges were encountered during this assignment:
 
-- Incorrect user creation during initial setup
+- Incorrect user creation during initial setup (details documented in Appendices)
 - Confusion regarding 32-bit OS versus 64-bit kernel reporting
 - Unsupported hardware revision code in the provided experiment
 - Empty output plots due to early program termination
@@ -311,12 +316,148 @@ This ensured that the system used the correct course-related username and avoide
 
 --- 
 
-### Appendix B: Project Directory Structure
+### Appendix B: Common Linux Commands Used for System Inspection
+
+The following Linux commands were explored to inspect the filesystem, storage usage, and directory structure.  
+Command outputs were examined to better understand system state and resource utilization.
+
+- `ls -l`  
+   Lists files and directories in long format, including permissions, ownership, file size, and modification time.  
+   This command is useful for inspecting file permissions and verifying executable status.
+   ```
+   yuanchen_eep522@rpi4-eep522:~/eep522 $ ls -l
+   total 4
+   drwxrwxr-x 4 yuanchen_eep522 yuanchen_eep522 4096 Jan 25 13:02 assignment1
+   ```
+
+- `ls -lh`  
+  Similar to `ls -l`, but displays file sizes in a human-readable format (e.g., KB, MB).  
+  This improves readability when inspecting directories containing multiple files.
+  ```
+  yuanchen_eep522@rpi4-eep522:~/eep522 $ ls -lh
+  total 4.0K
+  drwxrwxr-x 4 yuanchen_eep522 yuanchen_eep522 4.0K Jan 25 13:02 assignment1
+  ```
+
+- `df`  
+  Displays disk space usage for mounted filesystems in blocks.  
+  Useful for checking overall disk availability.
+  ```
+  yuanchen_eep522@rpi4-eep522:~/eep522 $ df
+  Filesystem     1K-blocks    Used Available Use% Mounted on
+  udev              190956       0    190956   0% /dev
+  tmpfs             185680    4340    181340   3% /run
+  /dev/mmcblk0p2  30082772 5655628  23139208  20% /
+  tmpfs             464200       8    464192   1% /dev/shm
+  tmpfs               5120      16      5104   1% /run/lock
+  tmpfs               1024       0      1024   0% /run/credentials/systemd-journald.service
+  tmpfs             464200       0    464200   0% /tmp
+  /dev/mmcblk0p1    522230  108312    413918  21% /boot/firmware
+  tmpfs               1024       0      1024   0% /run/credentials/getty@tty1.service
+  tmpfs              92840      60     92780   1% /run/user/1001
+  tmpfs               1024       0      1024   0% /run/credentials/serial-getty@ttyS0.service
+  ```
+
+- `df -h`  
+  Displays disk usage in a human-readable format.  
+  Commonly used to verify remaining storage capacity on the microSD card.
+  ```
+  Filesystem      Size  Used Avail Use% Mounted on
+  udev            187M     0  187M   0% /dev
+  tmpfs           182M  4.3M  178M   3% /run
+  /dev/mmcblk0p2   29G  5.4G   23G  20% /
+  tmpfs           454M  8.0K  454M   1% /dev/shm
+  tmpfs           5.0M   16K  5.0M   1% /run/lock
+  tmpfs           1.0M     0  1.0M   0% /run/credentials/systemd-journald.service
+  tmpfs           454M     0  454M   0% /tmp
+  /dev/mmcblk0p1  510M  106M  405M  21% /boot/firmware
+  tmpfs           1.0M     0  1.0M   0% /run/credentials/getty@tty1.service
+  tmpfs            91M   60K   91M   1% /run/user/1001
+  tmpfs           1.0M     0  1.0M   0% /run/credentials/serial-getty@ttyS0.service
+  ```
+
+- `du`  
+  Estimates disk usage of files and directories.  
+  Useful for identifying directories that consume significant storage.
+  ```
+  yuanchen_eep522@rpi4-eep522:~/eep522 $ du
+  68      ./.git/hooks
+  8       ./.git/logs/refs/remotes/origin
+  12      ./.git/logs/refs/remotes
+  8       ./.git/logs/refs/heads
+  24      ./.git/logs/refs
+  32      ./.git/logs
+  4       ./.git/refs/tags
+  8       ./.git/refs/remotes/origin
+  12      ./.git/refs/remotes
+  8       ./.git/refs/heads
+  28      ./.git/refs
+  8       ./.git/info
+  4       ./.git/branches
+  8       ./.git/objects/e3
+  52      ./.git/objects/0b
+  8       ./.git/objects/34
+  24      ./.git/objects/d5
+  12      ./.git/objects/bb
+  8       ./.git/objects/40
+  12      ./.git/objects/33
+  8       ./.git/objects/31
+  4       ./.git/objects/info
+  8       ./.git/objects/ef
+  8       ./.git/objects/2d
+  8       ./.git/objects/2f
+  8       ./.git/objects/b4
+  8       ./.git/objects/89
+  44      ./.git/objects/29
+  8       ./.git/objects/ae
+  12      ./.git/objects/1c
+  12      ./.git/objects/58
+  48      ./.git/objects/28
+  44      ./.git/objects/a9
+  8       ./.git/objects/c3
+  4       ./.git/objects/pack
+  8       ./.git/objects/51
+  8       ./.git/objects/01
+  12      ./.git/objects/7c
+  8       ./.git/objects/bc
+  8       ./.git/objects/9b
+  8       ./.git/objects/ac
+  8       ./.git/objects/8c
+  12      ./.git/objects/b2
+  8       ./.git/objects/25
+  8       ./.git/objects/3c
+  12      ./.git/objects/a4
+  8       ./.git/objects/cc
+  8       ./.git/objects/c5
+  8       ./.git/objects/46
+  8       ./.git/objects/11
+  492     ./.git/objects
+  660     ./.git
+  256     ./assignment1/experiment/ee_course
+  24      ./assignment1/experiment/__MACOSX/ee_course
+  32      ./assignment1/experiment/__MACOSX
+  292     ./assignment1/experiment
+  184     ./assignment1/images
+  508     ./assignment1
+  1172    .
+  ```
+
+- `du -chs`  
+  Displays disk usage for directories in a summarized, human-readable format, including a total.  
+  This command is particularly useful for understanding the storage footprint of project directories.
+  ```
+  yuanchen_eep522@rpi4-eep522:~/eep522 $ du -chs
+  1.2M    .
+  1.2M    total
+  ``` 
+--- 
+### Appendix C: Project Directory Structure
 ```
 eep522/
 └── assignment1/
-├── Assignment1_Report.md
-├── hellow.c
-├── experiment/
-└── images/
+   ├── experiment/
+   ├── Assignment1_Report.md
+   ├── images/
+   └── hellow.c
+
 ```
