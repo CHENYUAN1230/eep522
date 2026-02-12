@@ -1,397 +1,572 @@
-## CPU and Memory Bandwidth Characterization
+# Assignment 2 – Exploration  
+## Raspberry Pi 4 System Characterization Report  
 
-### Objective
-
-The objective of this experiment was to evaluate how image resolution and frame rate affect CPU utilization and memory bandwidth on the Raspberry Pi platform. The experiment simulates a camera workload by copying frame-sized memory buffers at a controlled frame rate.
-
-This exploration aims to understand whether the system is compute-bound or memory-bound when processing image-like data streams.
-
----
-
-### Experimental Setup
-
-A C program was developed to simulate camera frame processing. The program:
-
-- Allocates two frame-sized memory buffers
-- Copies one buffer into another using `memcpy`
-- Controls execution rate using `usleep()` to simulate FPS
-- Runs for a fixed duration of 5 seconds
-- Measures execution time using `clock_gettime()`
-- CPU utilization measured using the Linux `time` utility
-
-Frame size calculation:
-
-- RGB888 format (3 bytes per pixel)
-- Frame size = width × height × 3
-
-Test configurations:
-
-| Resolution | FPS | Frame Size |
-|------------|-----|------------|
-| 1280 × 720 | 15  | 2.64 MB |
-| 1920 × 1080 | 30 | 5.93 MB |
+Author: Yu-An Chen  
+C Proficiency Level: Beginner  
+Coding Standard Used: C99  
 
 ---
 
-### Results
+# 1. Objective
 
-#### 720p @ 15 FPS
+The objective of this assignment is to characterize the Raspberry Pi 4 Model B platform and establish a theoretical and experimental baseline of its hardware and software capabilities.
 
-## CPU and Memory Bandwidth Characterization
+The focus areas selected for this exploration include:
 
-### Objective
+- CPU architecture and cache hierarchy  
+- Memory bandwidth behavior and working-set scaling  
+- GPIO peripheral control and pin configuration using libgpiod  
+- Real-time scheduling characteristics and jitter analysis  
+- Multithreading behavior and synchronization mechanisms  
+- Boot time analysis and startup determinism  
+- Suitability for limited (~1000 units) and mass production (>10,000 units)  
 
-The objective of this experiment was to evaluate how image resolution and frame rate affect CPU utilization and memory bandwidth on the Raspberry Pi platform. The experiment simulates a camera workload by copying frame-sized memory buffers at a controlled frame rate.
+These areas were selected to evaluate whether the Raspberry Pi 4 platform is suitable for embedded image-processing workloads and moderate real-time applications. The exploration emphasizes memory hierarchy behavior, scheduling determinism, peripheral control capability, and multicore synchronization characteristics.
 
-This exploration aims to understand whether the system is compute-bound or memory-bound when processing image-like data streams.
-
----
-
-### Experimental Setup
-
-A C program was developed to simulate camera frame processing. The program:
-
-- Allocates two frame-sized memory buffers
-- Copies one buffer into another using `memcpy`
-- Controls execution rate using `usleep()` to simulate FPS
-- Runs for a fixed duration of 5 seconds
-- Measures execution time using `clock_gettime()`
-- CPU utilization measured using the Linux `time` utility
-
-Frame size calculation:
-
-- RGB888 format (3 bytes per pixel)
-- Frame size = width × height × 3
-
-Test configurations:
-
-| Resolution | FPS | Frame Size |
-|------------|-----|------------|
-| 1280 × 720 | 15  | 2.64 MB |
-| 1920 × 1080 | 30 | 5.93 MB |
 
 ---
 
-### Results
+# 2. System Overview
 
-#### 720p @ 15 FPS
+## 2.1 Operating System and Kernel
+
+Command used:
+
+
 ```
-real ≈ 5.05 s
-user ≈ 0.109 s
-sys ≈ 0.004 s
+uname -a
 ```
-Estimated CPU utilization:
 
-CPU ≈ (user + sys) / real  
-CPU ≈ (0.109 + 0.004) / 5.05 ≈ 2.2%
-
-Theoretical memory traffic:
-
-2.64 MB × 15 FPS ≈ 39.6 MB/s
-
----
-
-#### 1080p @ 30 FPS
+Result:
 ```
-real ≈ 5.03 s
-user ≈ 0.369 s
-sys ≈ 0.025 s
+Linux rpi4-eep522 6.12.47+rpt-rpi-v8 #1 SMP PREEMPT Debian 1:6.12.47-1+rpt1 (2025-09-16) aarch64 GNU/Linux
 ```
-Estimated CPU utilization:
-
-CPU ≈ (0.369 + 0.025) / 5.03 ≈ 7.8%
-
-Theoretical memory traffic:
-
-5.93 MB × 30 FPS ≈ 177.9 MB/s
-
----
 
 ### Analysis
 
-The experimental results show approximately a 4× increase in CPU utilization when increasing both resolution and frame rate.
+- Architecture: ARMv8-A (64-bit)
+- Kernel: Linux 6.12.47
+- SMP enabled (4 cores)
+- PREEMPT enabled (low-latency kernel, not PREEMPT_RT)
 
-This aligns with the theoretical scaling of memory traffic:
-
-- Resolution increase ≈ 2.2×
-- FPS increase ≈ 2×
-- Total memory traffic ≈ 4.4×
-
-The measured CPU increase closely matches the expected increase in memory bandwidth demand.
-
-This indicates that the workload is primarily **memory-bandwidth bound**, rather than compute-bound.
+The system uses a general-purpose Linux kernel with preemption enabled. This improves responsiveness but does not guarantee hard real-time behavior.
 
 ---
+
+## 2.2 CPU Architecture
+
+Commands used:
+
+```
+cat /proc/cpuinfo
+lscpu
+```
+
+Summary:
+
+- Model: Raspberry Pi 4 Model B Rev 1.5
+- SoC: Broadcom BCM2711
+- CPU: ARM Cortex-A72
+- Cores: 4
+- Threads per core: 1
+- CPU max frequency: 1.8 GHz
+- CPU min frequency: 600 MHz
+
+Cache hierarchy:
+
+- L1 Data Cache: 32 KB per core (128 KB total)
+- L1 Instruction Cache: 48 KB per core (192 KB total)
+- L2 Cache: 1 MB shared
 
 ### Observations
 
-- CPU utilization remains relatively low (<10%) even at 1080p @ 30 FPS.
-- The Raspberry Pi platform has significant headroom for additional processing.
-- Frame processing workload scales approximately linearly with memory traffic.
-- System behavior appears deterministic under controlled frame rates.
+- True multicore execution supported
+- Shared L2 cache may introduce contention
+- Dynamic frequency scaling may affect determinism
 
 ---
 
-### Insight
+# 3. CPU and Memory Bandwidth Characterization
 
-In image-processing workloads, memory bandwidth can become the dominant bottleneck rather than arithmetic computation. Resolution and frame rate directly affect memory traffic, which in turn determines CPU utilization.
+## 3.1 Objective
 
-This experiment provides a baseline understanding of system capacity before introducing additional processing such as image analysis or multithreading.
+To evaluate how image resolution and frame rate affect CPU utilization and memory bandwidth when simulating a camera workload.
 
----
-
-
-
-![alt text](image.png)
-![alt text](image-1.png)
-![alt text](image-2.png)
-
-
-
-
-## Real-Time Behavior and Scheduling Analysis
-
-### Objective
-
-The objective of this experiment was to evaluate the timing determinism of periodic task execution on a Raspberry Pi running Linux. Specifically, the experiment aimed to measure:
-
-- Frame interval stability (jitter)
-- Context switch behavior
-- The impact of CPU load on scheduling determinism
-
-This helps characterize whether the platform behaves as a deterministic real-time system or as a soft real-time system under load.
+The experiment determines whether the system is compute-bound or memory-bandwidth bound.
 
 ---
 
-### Methodology
+## 3.2 Experimental Setup
 
-A periodic task was implemented in C to simulate a 30 FPS workload. The program:
+A C program simulated frame processing:
 
-- Uses `usleep()` to wake up every 33.333 ms
-- Measures actual elapsed time between wakeups using `clock_gettime()`
-- Computes jitter as the difference between actual and target intervals
-- Reports:
-  - Maximum jitter
-  - Minimum jitter
-  - Average jitter
-  - Voluntary and non-voluntary context switches from `/proc/self/status`
+- Two frame-sized buffers allocated
+- `memcpy()` used to simulate frame transfer
+- `usleep()` controlled FPS
+- Duration: 5 seconds
+- CPU measured via `time`
+- Execution time measured using `clock_gettime()`
 
-The test was executed for 5 seconds under two conditions:
+Frame format:
 
-1. Idle system (no additional load)
-2. High CPU load using `yes > /dev/null`
+- RGB888 (3 bytes per pixel)
+
+Test configurations:
+
+| Resolution | FPS | Frame Size |
+|------------|-----|------------|
+| 1280×720   | 15  | 2.64 MB    |
+| 1920×1080  | 30  | 5.93 MB    |
 
 ---
 
-### Results
+## 3.3 Results
 
-#### Case 1: Idle System
+### Test Command - 720p @ 15 FPS
+
 
 ```
-Target interval: 0.033333 s
+time ./frame_test 1280 720 15
+```
+
+Output:
+```
+Resolution: 1280x720
+FPS: 15
+Frame size: 2.64 MB
+Execution time: 5.016 seconds
+
+real    0m5.039s
+user    0m0.144s
+sys     0m0.024s
+```
+
+CPU utilization:
+
+```
+CPU ≈ (0.144 + 0.024) / 5.039
+CPU ≈ 0.168 / 5.039 ≈ 3.3%
+
+```
+
+Theoretical memory traffic:
+
+```
+2.64 MB × 15 FPS ≈ 39.6 MB/s
+```
+
+---
+
+### Test Command - 1080p @ 30 FPS
+
+```
+time ./frame_test 1920 1080 30
+```
+
+Output:
+```
+Resolution: 1920x1080
+FPS: 30
+Frame size: 5.93 MB
+Execution time: 5.026 seconds
+
+real    0m5.043s
+user    0m0.488s
+sys     0m0.013s
+```
+
+CPU utilization:
+
+```
+CPU ≈ (0.488 + 0.013) / 5.043
+CPU ≈ 0.501 / 5.043 ≈ 9.9%
+
+```
+
+Theoretical memory traffic:
+
+```
+5.93 MB × 30 FPS ≈ 177.9 MB/s
+```
+
+---
+
+## 3.4 Analysis
+
+Resolution increase ≈ 2.2×
+FPS increase ≈ 2×
+Expected memory traffic increase ≈ 4.4×
+
+Measured CPU increase:
+```
+3.3% → 9.9%
+≈ 3× increase
+```
+
+Observations:
+
+- Real time remains constant (~5 seconds) due to fixed test duration.
+- CPU utilization increases proportionally with memory traffic.
+- Even at 1080p @ 30 FPS, CPU usage remains under 10%.
+- System time remains very small, indicating minimal kernel overhead.
+- Majority of CPU time is spent in user-space memcpy().
+
+Conclusion:
+
+The workload scales primarily with memory transfer size and frame rate.
+
+The system is not compute-bound.
+
+Given the linear scaling of CPU usage with memory traffic and low overall utilization, the workload is more indicative of a memory-bandwidth dominated workload, though the Raspberry Pi 4 still has significant headroom for additional processing.
+
+---
+
+# 4. Memory Hierarchy Benchmark
+
+To evaluate cache behavior, a memory copy benchmark was executed.
+
+Command:
+
+```
+gcc memory_copy_test.c -O0 -o memtest
+./memtest
+```
+
+Results:
+
+```
+Size: 1024 bytes     | Time: 0.000002 s | Bandwidth: 405.72 MB/s
+Size: 1048576 bytes  | Time: 0.001326 s | Bandwidth: 754.17 MB/s
+Size: 104857600 bytes| Time: 0.137362 s | Bandwidth: 728.00 MB/s
+```
+
+### Interpretation
+
+- 1 KB fits entirely within L1 cache (32 KB per core)
+- 1 MB approximates L2 cache size (1 MB shared)
+- 100 MB exceeds cache → DRAM access
+
+Observation:
+
+Bandwidth remains relatively high, indicating efficient memory subsystem performance. Slight variations may be due to cache line behavior and memcpy optimization.
+
+Conclusion:
+
+The system exhibits strong memory bandwidth capability suitable for moderate image-processing workloads.
+
+---
+
+# 5. Real-Time Behavior and Scheduling Analysis
+
+## 5.1 Objective
+
+To measure periodic timing jitter and scheduling interference under load.
+
+---
+
+## 5.2 Methodology
+
+- 30 FPS periodic task using `usleep(33333)`
+- Measured jitter with `clock_gettime()`
+- Measured context switches from `/proc/self/status`
+- Tested under idle and high CPU load
+
+---
+
+## 5.3 Results
+
+### Idle System
+
+```
 Max jitter: 0.000568 s
-Min jitter: 0.000061 s
 Avg jitter: 0.000078 s
-
-voluntary_ctxt_switches: 152
-nonvoluntary_ctxt_switches: 0
+voluntary switches: 152
+nonvoluntary switches: 0
 ```
 
-Observations:
-
-- Voluntary context switches closely matched the expected sleep cycles (≈150 for 30 FPS × 5 s).
-- No non-voluntary context switches occurred.
-- Maximum jitter remained below 0.6 ms.
-- CPU usage observed in `top` was low.
-
----
-
-#### Case 2: High CPU Load (`yes > /dev/null`)
+### High CPU Load
 
 ```
-Target interval: 0.033333 s
 Max jitter: 0.003879 s
-Min jitter: 0.000061 s
 Avg jitter: 0.000119 s
-
-voluntary_ctxt_switches: 150
-nonvoluntary_ctxt_switches: 4
+voluntary switches: 150
+nonvoluntary switches: 4
 ```
-
-
-Observations:
-
-- Voluntary context switches remained consistent with expected sleep cycles.
-- Non-voluntary context switches increased (4 occurrences).
-- Maximum jitter increased significantly (≈3.9 ms).
-- `top` indicated high CPU utilization due to the additional load process.
 
 ---
 
-### Analysis
+## 5.4 Analysis
 
-The results clearly demonstrate the impact of system load on scheduling determinism.
+Under load:
 
-Under idle conditions:
+- Jitter increased ~7×
+- Non-voluntary context switches observed
+- Scheduler interference measurable
 
-- The periodic task executed with minimal jitter.
-- No forced preemption occurred.
-- The system behaved in a relatively deterministic manner.
+Conclusion:
 
-Under high CPU load:
-
-- Non-voluntary context switches were observed.
-- Maximum jitter increased by approximately 7×.
-- Scheduling interference from competing processes introduced measurable timing variability.
-
-This confirms that Linux on Raspberry Pi behaves as a **soft real-time system**. While timing stability is acceptable under low load, deterministic guarantees cannot be maintained under CPU contention.
+The Raspberry Pi running standard Linux behaves as a **soft real-time system**, not hard real-time.
 
 ---
 
-### Context Switch Interpretation
+# 6. GPIO Pin Control and Hardware Interaction
 
-- `voluntary_ctxt_switches` correspond to explicit `usleep()` calls.
-- `nonvoluntary_ctxt_switches` indicate scheduler preemption.
-- The increase in non-voluntary switches under load directly correlates with increased jitter.
+## 6.1 Objective
 
----
+The objective of this experiment was to evaluate GPIO control capabilities on the Raspberry Pi 4 using the modern Linux `libgpiod` interface.
 
-### Conclusion
+This experiment aims to determine:
 
-This experiment demonstrates that:
-
-- Periodic tasks on Linux exhibit low jitter under idle conditions.
-- CPU load increases scheduler interference.
-- Non-voluntary context switches are a measurable indicator of preemption.
-- Timing determinism degrades under contention.
-
-Therefore, the Raspberry Pi running standard Linux should be considered a **soft real-time platform**, suitable for latency-tolerant embedded workloads but not for hard real-time guarantees.
-
-Figures from `top` illustrating CPU utilization under both conditions are included for reference.
-
-
-## Multithreading: Race Condition and Mutex Synchronization
-
-### Objective
-
-The purpose of this experiment was to investigate race conditions in a multi-threaded environment and evaluate whether mutex synchronization eliminates non-deterministic behavior. Additionally, the impact of compiler optimization on observable race behavior was examined.
+- Whether GPIO access is deterministic
+- How Linux manages GPIO resource ownership
+- The suitability of libgpiod for embedded applications
+- Basic I/O latency characteristics
 
 ---
 
-### Experimental Design
+## 6.2 Library Selection
 
-A shared global counter was incremented concurrently by two threads:
+The experiment used:
+
+libgpiod (GPIO character device interface)
+
+Reasons for selection:
+
+- Replaces deprecated sysfs GPIO interface
+- Official Linux-supported interface
+- Uses `/dev/gpiochipX`
+- Provides structured configuration APIs
+- Supports bias configuration, edge detection, and exclusive access
+
+---
+
+## 6.3 Experimental Setup
+
+Hardware:
+
+- LED connected to GPIO 17
+- Push-button connected to GPIO 27
+- Internal pull-up resistor enabled
+
+Software:
+
+The program:
+
+- Opens `/dev/gpiochip0`
+- Configures GPIO 17 as output
+- Configures GPIO 27 as input with pull-up bias
+- Requests exclusive line access
+- Polls button state every 10 ms
+- Turns LED ON when button pressed
+
+
+Compilation:
 
 ```
-int counter = 0;
-
-void* increment(void* arg)
-{
-    for (int i = 0; i < ITERATIONS; i++)
-    {
-        counter++;   // Not atomic
-    }
-    return NULL;
-}
+gcc gpio_test.c -o gpio_test -lgpiod
 ```
-Two versions were tested:
 
-Without mutex protection
+---
 
-With mutex protection
+## 6.4 Observations
 
-The expected final result was:
+- Exclusive access prevents multiple processes from using the same GPIO line.
+- Pull-up bias ensures stable logic HIGH when button is not pressed.
+- Polling interval (10 ms) determines responsiveness.
+- CPU usage negligible (<1%).
+- Response delay approximately equal to polling interval.
 
-```
-Expected = number_of_threads × ITERATIONS
-```
-The program was compiled using both -O0 and -O2 optimization levels.
+---
+
+## 6.5 Determinism and Latency Analysis
+
+Because the program uses polling with `usleep(10000)`:
+
+- Worst-case latency ≈ 10 ms
+- Actual latency depends on scheduler timing
+- Under CPU load, delay variability may increase
+
+This confirms:
+
+- GPIO control via libgpiod is functional
+- Deterministic response is limited by Linux scheduling
+- Interrupt-based edge detection would improve latency
+
+---
+
+## 6.6 Suitability for Embedded Systems
+
+Advantages:
+
+- Clean structured API
+- Safe exclusive resource handling
+- Kernel-managed GPIO control
+- Supports pull-up/down configuration
+
+Limitations:
+
+- Subject to Linux scheduling jitter
+- Polling introduces latency
+- Not suitable for hard real-time interrupt control without PREEMPT_RT
+
+---
+
+## 6.7 Conclusion
+
+The Raspberry Pi 4 using libgpiod provides reliable GPIO control suitable for:
+
+- Prototyping
+- Low-frequency digital I/O
+- Educational embedded systems
+
+However, for deterministic interrupt-driven systems, additional real-time kernel support or bare-metal approaches would be required.
 
 
-### Results
 
-#### Case 1: No Mutex, Compiled with `-O0`
+# 7. Multithreading and Synchronization
+
+## 7.1 Race Condition Test
+
+Without mutex:
 
 ```
 Final counter = 10135379
-Expected = 40000000
+Expected      = 40000000
 ```
 
-The final counter value was significantly lower than expected.  
-Each execution produced different incorrect values.
-
-This demonstrates a classic race condition.
-
----
-
-#### Case 2: With Mutex, Compiled with `-O0`
+With mutex:
 
 ```
 Final counter = 40000000
-Expected = 40000000
+Expected      = 40000000
 ```
 
-The result was consistently correct across all executions.
+Conclusion:
 
-Mutex synchronization successfully eliminated concurrent memory corruption.
+- `counter++` is not atomic
+- Race conditions cause lost updates
+- Mutex guarantees correctness
 
 ---
 
-### Why the Race Occurs
+## 7.2 Producer–Consumer Camera Simulation
 
-The operation:
+Two versions tested:
 
-```
-counter++
-```
+1. Without mutex → frame corruption and nondeterministic behavior  
+2. With mutex → stable deterministic behavior  
 
-is not atomic. It consists of three steps:
+Conclusion:
 
-1. Load `counter` from memory  
-2. Add 1  
-3. Store back to memory  
-
-If two threads execute these steps simultaneously, the following can occur:
-
-```
-Thread A loads 10
-Thread B loads 10
-Thread A stores 11
-Thread B stores 11
-```
-
-One increment is lost.
-
-This results in a non-deterministic final counter value.
+Multicore systems require synchronization to maintain data integrity.
 
 ---
 
-### Impact of Compiler Optimization
+# 8. Boot Time Characterization
 
-When compiled with `-O2`, the race condition sometimes appeared less frequently or did not immediately produce incorrect results.
+Command:
 
-However, this does not eliminate the race condition.
+```
+systemd-analyze
+```
 
-Compiler optimization changes instruction scheduling, register usage, and memory access patterns, which may reduce the probability of interleaving. The underlying data race remains present because the shared variable is not protected.
+Results:
 
-Race conditions represent undefined behavior and may manifest differently depending on:
+Run 1:
 
-- Optimization level  
-- Scheduling  
-- CPU architecture  
-- System load  
+```
+Startup finished in 3.145s (kernel) + 19.054s (userspace) = 22.200s
+```
 
-Correctness must not rely on compiler behavior.
+Run 2:
+
+```
+Startup finished in 3.023s (kernel) + 18.890s (userspace) = 21.914s
+```
+
+Run 3:
+
+```
+Startup finished in 3.339s (kernel) + 19.090s (userspace) = 22.430s
+```
+
+### Observations
+
+- Kernel time stable (~3.1 s)
+- Userspace time variable (~18–19 s)
+- Total boot ≈ 22 s
+- Not deterministic
+
+Conclusion:
+
+The platform is unsuitable for applications requiring deterministic startup timing.
 
 ---
 
-### Conclusion
+# 9. Determinism and System Limitations
 
-This experiment demonstrates:
+Factors affecting determinism:
 
-- Unsynchronized shared memory access leads to non-deterministic results.
-- Race conditions may not always produce visible errors.
-- Compiler optimization can change the probability of observable race behavior.
-- Mutex synchronization guarantees correctness by enforcing mutual exclusion.
+- General-purpose Linux scheduler
+- Shared L2 cache
+- Dynamic frequency scaling
+- Swap enabled
+- SD card storage latency
 
-This confirms that multi-threaded embedded applications must use proper synchronization mechanisms to ensure data integrity, regardless of apparent behavior under certain build configurations.
+Conclusion:
+
+The Raspberry Pi 4 is suitable for soft real-time workloads but not safety-critical deterministic systems.
+
+---
+
+# 10. Production Considerations
+
+## Limited Production (~1000 units)
+
+- Acceptable for prototyping
+- SD card reliability must be evaluated
+- Thermal design required
+- Disable swap for real-time use
+
+## Mass Production (>10,000 units)
+
+Limitations:
+
+- 22 s nondeterministic boot time
+- Consumer-grade SD storage
+- Linux scheduling nondeterminism
+- Potential thermal throttling
+
+Recommendation:
+
+- Consider eMMC storage
+- Use PREEMPT_RT or RTOS
+- Consider custom embedded board
+
+---
+
+# 11. Conclusion
+
+The Raspberry Pi 4 Model B provides:
+
+- 4-core ARM Cortex-A72
+- 1 MB shared L2 cache
+- Strong memory bandwidth
+- SIMD support
+- Soft real-time scheduling
+
+The platform is well-suited for:
+
+- Experimental camera pipelines
+- Multithreaded processing
+- Educational embedded systems
+
+However, it is not suitable for:
+
+- Hard real-time guarantees
+- Deterministic startup systems
+- Safety-critical embedded devices
+
+Overall, the Raspberry Pi 4 serves as a capable soft real-time embedded platform for prototyping and moderate-scale deployment.
+
+---
