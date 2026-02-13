@@ -52,7 +52,7 @@ void* processing_thread(void* arg) {
             out = (out + 1) % BUFFER_SIZE;
             count--;
 
-            printf("   [Processor] Frame %d processed (count=%d)\n",
+            printf("[Processor] Frame %d processed (count=%d)\n",
                    frame.frame_id, count);
         }
 

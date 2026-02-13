@@ -9,7 +9,7 @@ void* increment(void* arg)
 {
     for (int i = 0; i < ITERATIONS; i++)
     {
-        counter++;   // ❌ not atomic
+        counter++;   // not atomic
     }
     return NULL;
 }

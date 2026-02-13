@@ -5,10 +5,22 @@
 #include <time.h>
 #include <unistd.h>
 
+/*
+Assume RGB image format:
+Each pixel consists of 3 bytes (R, G, B).
+*/
 #define BYTES_PER_PIXEL 3
 
 int main(int argc, char *argv[])
 {
+    /*
+    Program usage:
+    ./program <width> <height> <fps>
+    
+    width  = image width in pixels
+    height = image height in pixels
+    fps    = frames per second
+    */
     if (argc != 4)
     {
         printf("Usage: %s <width> <height> <fps>\n", argv[0]);
@@ -39,13 +51,23 @@ int main(int argc, char *argv[])
     struct timespec start, now;
     clock_gettime(CLOCK_MONOTONIC, &start);
 
+    /*
+    Duration of simulation in seconds.
+    The loop will simulate streaming for 5 seconds.
+    */
     int duration_seconds = 5;
 
     while (1)
     {
         memcpy(buffer, frame, frame_size);
 
-        usleep(1000000 / fps);   // fps 張 image/sec
+        /*
+        Control frame rate.
+        Sleep for 1/fps seconds.
+        Example:
+        30 fps -> sleep ~33ms per frame.
+        */
+        usleep(1000000 / fps);   
 
         clock_gettime(CLOCK_MONOTONIC, &now);
 

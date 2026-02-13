@@ -22,7 +22,7 @@ void* camera_thread(void* arg) {
         Frame frame;
         frame.frame_id = i;
 
-        // ❌ No protection
+        // No protection
         if (count < BUFFER_SIZE) {
             buffer[in] = frame;
             in = (in + 1) % BUFFER_SIZE;
@@ -41,7 +41,7 @@ void* camera_thread(void* arg) {
 void* processing_thread(void* arg) {
     for (int i = 0; i < MAX_FRAMES; i++) {
 
-        // ❌ No protection
+        // No protection
         if (count > 0) {
             Frame frame = buffer[out];
             out = (out + 1) % BUFFER_SIZE;
