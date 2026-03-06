@@ -1,0 +1,16 @@
+# Virtual environment
+Finals/final_env/
+
+# Detection outputs
+Finals/detector/detected_images/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Model weights
+*.pt
+
+# Logs
+*.log
