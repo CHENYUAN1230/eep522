@@ -4,10 +4,10 @@
 **Author:** Yu-An Chen  
 **Contact:** yuan1230@uw.edu  
 **Course:** EEP 522 – Embedded And Real Time Systems  
-**Platform:** Raspberry Pi 4 Model B (1GB) + Camera Module   
+**Platform:** Raspberry Pi 4 Model B (1GB) + Camera Module 3  
 **Date:** March 2026  
-**Estimated Time Spent:** ~48   
-**GitHub Repository:** https://github.com/CHENYUAN1230/eep522/tree/main/assignment3
+**Estimated Time Spent:** ~48 hours 
+**GitHub Repository:** https://github.com/CHENYUAN1230/eep522/tree/main/Finals/detector
 
 ---
 
@@ -18,8 +18,6 @@ This report documents the design, implementation, and evaluation of a real-time 
 ---
 
 ## 1. Project Objective and Goals
-
-### 1.1 Motivation
 
 ### 1.1 Motivation
 
@@ -60,8 +58,24 @@ The Detector and Streamer communicate via a shared memory buffer (`multiprocessi
 ---
 
 ## 2. Implementation Details
+### 2.1 Hardware and OS Setup
 
-### 2.1 Configuration (`config.py`)
+**Hardware:**
+- Raspberry Pi 4 Model B (1GB)
+- Raspberry Pi Camera Module 3 (Sony IMX708, 75° FOV)
+- 3D-printed enclosure (custom shell for RPi 4 + Camera Module 3)
+
+**OS Selection:**
+The system initially ran Raspberry Pi OS 32-bit desktop image from Assignment 1. 
+Under that configuration, the desktop environment consumed 300–400 MB of RAM at 
+boot — leaving insufficient headroom for YOLOv8n (~170 MB) + OpenCV + Flask 
+on a 1 GB board.
+
+The OS was reinstalled to **Raspberry Pi OS Lite 64-bit (Bookworm)**, freeing 
+~350 MB of RAM. This headless configuration was essential to making the full 
+system fit within the 1 GB memory constraint.
+
+### 2.2 Configuration (`config.py`)
 
 All tunable parameters are centralized in `config.py` and loaded from a `.env` file using `python-dotenv`. This keeps API credentials out of source code and allows runtime reconfiguration without recompilation.
 
@@ -79,7 +93,7 @@ Key parameters:
 | `BUFFER_SECONDS` | 30 | Rolling pre-event recording buffer |
 | `COOLDOWN_SECONDS` | 10 | Minimum time between alerts |
 
-### 2.2 Process Launch (`run.py`)
+### 2.3 Process Launch (`run.py`)
 
 `run.py` creates the shared memory buffer and lock using Python's `multiprocessing` module, then launches the Detector and Streamer as separate OS processes:
 
@@ -91,11 +105,11 @@ frame_lock   = mp.Lock()
 
 Using `multiprocessing` rather than `threading` avoids Python's Global Interpreter Lock (GIL), allowing true parallel execution across the Cortex-A72 cores identified in Assignment 2.
 
-### 2.3 Detector (`main.py`)
+### 2.4 Detector (`main.py`)
 
 The detector loop runs at `FPS_LIMIT = 5` frames per second and performs the following steps each cycle:
 
-1. **Capture** – acquire an RGB frame from the Pi Camera v2 via `picamera2`.
+1. **Capture** – acquire an RGB frame from the Pi Camera Module 3 via `picamera2`.
 2. **Write to shared memory** – update the shared buffer under the mutex lock for the streamer to read.
 3. **Inference** – run `yolov8n.pt` on the frame using Ultralytics YOLO API.
 4. **Parse detections** – extract bounding boxes for `person` and `bicycle` classes above the confidence threshold.
@@ -107,7 +121,7 @@ The detector loop runs at `FPS_LIMIT = 5` frames per second and performs the fol
 
 The rolling pre-event buffer uses `collections.deque(maxlen=max_buffer)` to automatically discard the oldest frames, maintaining a configurable look-back window without unbounded memory growth.
 
-### 2.4 Live Streaming (`stream.py`)
+### 2.5 Live Streaming (`stream.py`)
 
 The streamer reads frames from shared memory and encodes them as JPEG using OpenCV, then serves them as a continuous MJPEG stream via Flask at `/video_feed`. An HTML landing page is served at `/` for browser access. The stream runs at approximately 10 FPS, independent of the detector's inference rate.
 
@@ -120,7 +134,7 @@ def read_shared_frame():
     return jpeg.tobytes()
 ```
 
-### 2.5 Notification System (`notifier.py`)
+### 2.6 Notification System (`notifier.py`)
 
 When a theft event is confirmed, the notifier:
 
@@ -129,7 +143,7 @@ When a theft event is confirmed, the notifier:
 
 A `cleanup_images()` function periodically removes files older than 7 days or in excess of 50 files, preventing SD card saturation — a practical concern identified in the Assignment 2 production analysis.
 
-### 2.6 LINE Chatbot (`webhook.py`)
+### 2.7 LINE Chatbot (`webhook.py`)
 
 The webhook server handles incoming LINE messages and responds to three commands:
 
@@ -145,7 +159,7 @@ The webhook server handles incoming LINE messages and responds to three commands
 
 This section evaluates how well the Assignment 2 baseline characterization predicted or described the real behavior observed in this project.
 
-### 3.1 CPU and Memory Bandwidth (Section 3 & 4 of A2)
+### 3.1 CPU and Memory Bandwidth
 
 **Prediction from A2:**
 The 1080p @ 30 FPS memcpy workload produced ~10% CPU utilization and ~178 MB/s memory traffic. DRAM bandwidth measured at ~728 MB/s, well above that demand.
@@ -166,7 +180,7 @@ Assignment 2 focused on `memcpy`-based memory bandwidth, which does not represen
 
 **Recommendation:** Add a tflite or ONNX inference microbenchmark to the characterization phase to establish a realistic inference FPS baseline for CV workloads.
 
-### 3.2 Real-Time Scheduling and Jitter (Section 5 of A2)
+### 3.2 Real-Time Scheduling and Jitter
 
 **Prediction from A2:**
 Under idle conditions, the 30 FPS periodic task exhibited average jitter of ~78 µs and worst-case jitter of ~568 µs. Under CPU load, worst-case jitter increased to ~3.9 ms.
@@ -183,7 +197,7 @@ This means scheduling jitter is not a practical concern for the theft detection 
 **Characterization Success:**
 The jitter characterization correctly indicated that soft real-time behavior is acceptable for camera-based monitoring workloads. The system does not require PREEMPT_RT or SCHED_FIFO for reliable operation.
 
-### 3.3 Multithreading and Shared Memory (Section 7 of A2)
+### 3.3 Multithreading and Shared Memory
 
 **Prediction from A2:**
 Unsynchronized shared memory access between threads causes nondeterministic behavior and data corruption. Mutex protection is mandatory for correct producer–consumer pipelines.
@@ -194,7 +208,7 @@ The shared frame buffer between the Detector and Streamer is protected by `mp.Lo
 **Characterization Success:**
 This was the most directly applicable result from A2. The producer–consumer synchronization pattern demonstrated in `camera_multithread_mutex_sim.c` maps exactly to the `main.py` ↔ `stream.py` interaction in A3.
 
-### 3.4 GPIO and Peripheral Control (Section 6 of A2)
+### 3.4 GPIO and Peripheral Control
 
 **Prediction from A2:**
 `libgpiod` provides reliable GPIO control at low CPU cost. Polling-based control introduces up to 10 ms worst-case latency.
@@ -205,7 +219,7 @@ This project does not use GPIO. The camera interface uses `picamera2` (CSI-2 lan
 **Characterization Gap:**
 A more comprehensive peripheral characterization would have included the CSI-2 camera interface and evaluated `picamera2` frame delivery latency and consistency.
 
-### 3.5 Boot Time (Section 8 of A2)
+### 3.5 Boot Time 
 
 **Prediction from A2:**
 Total boot time was ~22 seconds, with variable userspace startup time (~18–19 s).
@@ -256,6 +270,10 @@ Measured during steady-state operation at 640×480 @ 5 FPS inference:
 | RAM usage | ~380 MB (model + buffers + Flask) |
 | Disk write rate | Minimal (only on alert events) |
 | Network bandwidth (stream) | ~200–400 KB/s for MJPEG at 10 FPS |
+
+> RAM headroom was only available after switching from the 32-bit desktop OS 
+> to RPi OS Lite 64-bit — a direct consequence of the 1 GB memory constraint 
+> identified during hardware setup.
 
 The CPU utilization is significantly higher than predicted by the `memcpy`-based A2 benchmarks, confirming the gap noted in Section 3.1.
 
@@ -371,7 +389,7 @@ Overall, the Raspberry Pi 4 proved to be a capable and cost-effective platform f
 
 11. Molloy, Derek. *Exploring Raspberry Pi*. Wiley, 2016.
 
-12. ChatGPT (OpenAI) — Used as an auxiliary tool for clarifying Python multiprocessing patterns, Flask MJPEG streaming implementation, and reviewing technical writing structure. All technical decisions were verified through official documentation and direct system testing.
+12. ChatGPT (OpenAI) — Used as an auxiliary tool for clarifying Python multiprocessing patterns, Flask MJPEG streaming implementation, and reviewing technical writing structure. 
 
 ---
 
@@ -380,7 +398,7 @@ Overall, the Raspberry Pi 4 proved to be a capable and cost-effective platform f
 ### A.1 Directory Structure
 
 ```
-assignment3/
+Finals/detector
 ├── run.py                  # Process launcher
 ├── main.py                 # Detector and theft logic
 ├── stream.py               # MJPEG stream server
