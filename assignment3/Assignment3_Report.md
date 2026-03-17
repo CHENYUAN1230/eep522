@@ -6,7 +6,7 @@
 **Course:** EEP 522 – Embedded And Real Time Systems  
 **Platform:** Raspberry Pi 4 Model B (1GB) + Camera Module 3  
 **Date:** March 2026  
-**Estimated Time Spent:** ~48 hours 
+**Estimated Time Spent:** ~48 hours  
 **GitHub Repository:** https://github.com/CHENYUAN1230/eep522/tree/main/Finals/detector
 
 ---
