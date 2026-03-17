@@ -55,26 +55,7 @@ The system is composed of four modules running as concurrent processes:
 
 The Detector and Streamer communicate via a shared memory buffer (`multiprocessing.Array`) and a mutex (`multiprocessing.Lock`), implementing a producer–consumer pattern consistent with the synchronization experiments in Assignment 2.
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                   Raspberry Pi 4 Model B                │
-│                                                         │
-│  ┌───────────┐   shared memory    ┌──────────────────┐  │
-│  │  Detector  │ ──────────────▶  │    Streamer       │  │
-│  │  (main.py) │   + Lock IPC     │  (stream.py)      │  │
-│  │            │                  │  port 5000        │  │
-│  │  YOLOv8n   │                  └──────────────────┘  │
-│  │  PiCamera2 │                                         │
-│  │  Theft     │──── alert ──▶  Notifier  ──▶  LINE     │
-│  │  Logic     │               (Cloudinary)              │
-│  └───────────┘                                         │
-│                                                         │
-│  ┌─────────────────────────────────────┐               │
-│  │  Webhook Server  (webhook.py)        │               │
-│  │  port 5001  ◀──  LINE Chatbot       │               │
-│  └─────────────────────────────────────┘               │
-└─────────────────────────────────────────────────────────┘
-```
+
 
 ---
 
